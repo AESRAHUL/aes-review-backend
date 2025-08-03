@@ -1,48 +1,54 @@
-
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const OpenAI = require('openai');
+const express = require("express");
+const cors = require("cors");
+const { OpenAI } = require("openai");
+require("dotenv").config();
 
 const app = express();
-const port = process.env.PORT || 3000;
 
+// ✅ Enable CORS for all origins (like GitHub Pages)
+app.use(cors());
+
+// Parse JSON request body
+app.use(express.json());
+
+// Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-app.use(cors());
-app.use(bodyParser.json());
-
-app.post('/generate-review', async (req, res) => {
-  const { service, name, rating, date, technician, language } = req.body;
-
+// POST route to generate AI-based review
+app.post("/generate-review", async (req, res) => {
   try {
-    const prompt = language === 'hindi' ?
-      `कृपया एक ग्राहक समीक्षा लिखें जो ${service} सेवा के लिए हो। ग्राहक का नाम ${name}, रेटिंग ${rating} स्टार है, सेवा की तारीख ${date} है, और तकनीशियन का नाम ${technician} है। समीक्षा संक्षिप्त और सकारात्मक होनी चाहिए।` :
-      `Write a customer review for ${service} service. Customer name is ${name}, rating is ${rating} stars, service date was ${date}, and technician was ${technician}. Keep the review short and positive.`;
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: "gpt-4o", // or gpt-4 if you're not on gpt-4o plan
       messages: [
-        { role: "system", content: "You are a helpful assistant that writes customer reviews." },
-        { role: "user", content: prompt }
-      ]
+        {
+          role: "system",
+          content: "You are a helpful assistant that writes customer reviews.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
     });
 
     const review = completion.choices[0].message.content;
-
-    // Save review log for analytics
-    fs.appendFileSync("reviews.log", JSON.stringify({ service, name, rating, date, technician, review, timestamp: new Date().toISOString() }) + "\n");
-
     res.json({ review });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'AI generation failed' });
+    console.error("Error generating review:", error);
+    res.status(500).json({ error: "Failed to generate review" });
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
 });
