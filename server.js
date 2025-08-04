@@ -1,3 +1,16 @@
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const { OpenAI } = require("openai");
+
+dotenv.config();
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 app.post("/generate-review", async (req, res) => {
   try {
     const { name, service, language } = req.body;
@@ -6,7 +19,7 @@ app.post("/generate-review", async (req, res) => {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
-    // 🧠 Build the prompt based on selected language
+    // Dynamically generate prompt based on language
     let prompt = "";
 
     if (language === "english") {
@@ -33,8 +46,18 @@ app.post("/generate-review", async (req, res) => {
 
     const review = completion.choices[0].message.content;
     res.json({ review });
+
   } catch (error) {
     console.error("Error generating review:", error);
     res.status(500).json({ error: "Failed to generate review" });
   }
+});
+
+app.get("/", (req, res) => {
+  res.send("AES Review Generator Backend Running...");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
