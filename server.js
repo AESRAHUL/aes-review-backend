@@ -1,32 +1,24 @@
-const express = require("express");
-const cors = require("cors");
-const { OpenAI } = require("openai");
-require("dotenv").config();
-
-const app = express();
-
-// ✅ Enable CORS for all origins (like GitHub Pages)
-app.use(cors());
-
-// Parse JSON request body
-app.use(express.json());
-
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
-// POST route to generate AI-based review
 app.post("/generate-review", async (req, res) => {
   try {
-    const { prompt } = req.body;
+    const { name, service, language } = req.body;
 
-    if (!prompt) {
-      return res.status(400).json({ error: "Prompt is required" });
+    if (!name || !service || !language) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    // 🧠 Build the prompt based on selected language
+    let prompt = "";
+
+    if (language === "english") {
+      prompt = `Write a 5-star Google review in English for a home appliance service. Customer name is ${name}, service was ${service}. The review should sound natural and appreciative. Do not include a title.`;
+    } else if (language === "hindi") {
+      prompt = `एक 5-स्टार गूगल रिव्यू हिंदी में लिखिए। ग्राहक का नाम ${name} है और सर्विस थी ${service} की। रिव्यू नेचुरल और संतुष्ट ग्राहक जैसा हो। शीर्षक न दें।`;
+    } else {
+      return res.status(400).json({ error: "Unsupported language" });
     }
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o", // or gpt-4 if you're not on gpt-4o plan
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -45,10 +37,4 @@ app.post("/generate-review", async (req, res) => {
     console.error("Error generating review:", error);
     res.status(500).json({ error: "Failed to generate review" });
   }
-});
-
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ Server running on port ${PORT}`);
 });
